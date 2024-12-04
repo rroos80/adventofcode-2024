@@ -1,36 +1,34 @@
 import argparse
 
 class Red_Nosed_Reports:
-    def __init__(self, file_name, test=False):
+    def __init__(self, file_name, test=False, dampener=False):
         self.file_name = file_name
         self.test = test
+        self.dampener = dampener
 
     def parse_report(self, num):
-        # Check if the list starts off increasing or decreasing
-        # Start with assumption that reports is safe and invalidate it by parsing the report
         valid = True
-        delta = num[1] - num[0]
-        if -4 < delta < 0:
-            # Report should be decreasing
-            for i in range(1, len(num)-1):
-                delta = num[i+1] - num[i]
-                if delta >= 0 or delta < -3:
-                    #print("DEC", num, delta)
-                    # Values no longer gradually decreasing
-                    valid = False
-        elif 0 < delta < 4:
-            # Report should be increasing
-            for i in range(1, len(num)-1):
-                delta = num[i+1] - num[i]
-                if delta <= 0 or delta > 3:
-                    # Values no longer gradually increasing
-                    #print("INC", num, delta)
-                    valid = False
-        else:
-            # Invalid as first two values are neither increasing nor decreasing
-            #print("SAME", num)
-            valid = False
+
+        # Calculate distances between values
+        delta = []
+        for i in range(1, len(num)):
+            delta += [num[i]-num[i-1]]
         
+        # Now check that the report uniformly goes either up or down
+        all_positive = all(i > 0 for i in delta)
+        all_negative = all(i < 0 for i in delta)
+        all_same     = all(i == num[0] for i in num) if num else True
+        abs_delta    = [abs(i) for i in delta]
+        
+        if all_same:
+            valid = False
+            print("Same", num)
+        elif all_positive or all_negative:
+            if max(abs_delta) > 3:
+                valid = False
+        else:
+            valid = False
+
         return valid
 
 
@@ -50,6 +48,15 @@ class Red_Nosed_Reports:
                     boolean = line.split()[-1].lower() in ['True', 'true']
                 
                 valid = self.parse_report(num)
+
+                if valid == False:
+                    if self.dampener:
+                        # Lazy way: brute forcing removing individual elements to see if the report becomes valid
+                        for i in range(len(num)):
+                            num_new = num[:i]+num[i+1:]
+                            valid = self.parse_report(num_new)
+                            if valid == True:
+                                break
 
                 if self.test == False:
                     # We passed all the checks so this report is safe
@@ -87,7 +94,12 @@ if args.t:
     o.parse()
 else:
     # Execute the scripts on the actual data
-    o = Red_Nosed_Reports(file_name='./input/02-input.txt')
+    o = Red_Nosed_Reports(file_name='./input/02-input.txt', dampener=False)
     count = o.parse()
 
     print(f"\nThe total number of safe reports is {count}.\n")
+
+    o = Red_Nosed_Reports(file_name='./input/02-input.txt', dampener=True)
+    count = o.parse()
+
+    print(f"The total number of safe reports with the dampener active is {count}.\n")
